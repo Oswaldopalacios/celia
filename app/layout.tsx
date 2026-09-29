@@ -37,13 +37,29 @@ const kaushanScript = Kaushan_Script({
   weight: "400",
 });
 
+const siteDescription =
+  "Restaurante Doña Celia: comida típica mexicana hecha en casa desde 1989. Antojitos, guisados, caldos y aguas frescas. Las manos del buen sabor.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.restaurantedonacelia.com.mx"),
   title: {
     default: "Doña Celia",
     template: "%s | Doña Celia",
   },
-  description:
-    "Restaurante Doña Celia: comida típica mexicana hecha en casa desde 1989. Antojitos, guisados, caldos y aguas frescas. Las manos del buen sabor.",
+  description: siteDescription,
+  openGraph: {
+    type: "website",
+    locale: "es_MX",
+    url: "/",
+    siteName: "Doña Celia",
+    title: "Doña Celia · Las manos del buen sabor",
+    description: siteDescription,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Doña Celia · Las manos del buen sabor",
+    description: siteDescription,
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
