@@ -127,6 +127,9 @@ export function MenuHome() {
   return (
     <PublicFrame>
       <header className="relative">
+        <h1 className="sr-only">
+          Doña Celia Restaurante: menú de comida típica mexicana desde 1989
+        </h1>
         <motion.div
           className="relative h-[236px] overflow-hidden bg-[#EAD7BD] lg:h-[min(52vw,620px)]"
           variants={softScale}

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import {
   Fraunces,
   Geist,
@@ -6,6 +6,14 @@ import {
   Kaushan_Script,
   Nunito_Sans,
 } from "next/font/google";
+import {
+  DEFAULT_OG_IMAGE,
+  SITE_DESCRIPTION,
+  SITE_KEYWORDS,
+  SITE_NAME,
+  SITE_TAGLINE,
+  SITE_URL,
+} from "@/lib/site";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -37,29 +45,56 @@ const kaushanScript = Kaushan_Script({
   weight: "400",
 });
 
-const siteDescription =
-  "Restaurante Doña Celia: comida típica mexicana hecha en casa desde 1989. Antojitos, guisados, caldos y aguas frescas. Las manos del buen sabor.";
+const defaultTitle = `${SITE_NAME} · ${SITE_TAGLINE} | Comida típica mexicana`;
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.restaurantedonacelia.com.mx"),
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "Doña Celia",
-    template: "%s | Doña Celia",
+    default: defaultTitle,
+    template: `%s | ${SITE_NAME}`,
   },
-  description: siteDescription,
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: SITE_KEYWORDS,
+  authors: [{ name: SITE_NAME, url: SITE_URL }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  category: "restaurant",
+  formatDetection: {
+    telephone: false,
+    email: false,
+    address: false,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   openGraph: {
     type: "website",
     locale: "es_MX",
     url: "/",
-    siteName: "Doña Celia",
-    title: "Doña Celia · Las manos del buen sabor",
-    description: siteDescription,
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} · ${SITE_TAGLINE}`,
+    description: SITE_DESCRIPTION,
+    images: [DEFAULT_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Doña Celia · Las manos del buen sabor",
-    description: siteDescription,
+    title: `${SITE_NAME} · ${SITE_TAGLINE}`,
+    description: SITE_DESCRIPTION,
+    images: [DEFAULT_OG_IMAGE.url],
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#FAF3E6",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
