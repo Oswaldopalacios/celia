@@ -27,7 +27,7 @@ export const DEFAULT_LOCATION: Omit<ContactSettings, "updatedAt"> = {
   address: "Restaurante Doña Celia, México",
   mapsQuery: "",
   description:
-    "Desde 1989, Doña Celia cocina como en casa: masa hecha a mano, guisados de olla y salsas molcajeteadas. Siéntate a la mesa, pide tu antojito favorito y quédate a la sobremesa.",
+    "Desde 1989, Doña Celia cocina como en casa: tortilla hecha a mano, guisados de olla y salsas molcajeteadas. Siéntate a la mesa, pide tu antojito favorito y quédate a la sobremesa.",
   hours: [
     { label: "Lunes - Domingo", value: "8:00 a.m. - 6:00 p.m." },
     { label: "Desayunos", value: "8:00 a.m. - 12:00 p.m." },
