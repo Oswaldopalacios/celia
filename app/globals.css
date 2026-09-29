@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+:root {
+  --background: #FAF3E6;
+  --foreground: #3A2218;
+  --celia-mole: #3A2218;
+  --celia-mole-dark: #2B170E;
+  --celia-masa: #FAF3E6;
+  --celia-tortilla: #F1E3CB;
+  --celia-chile: #C62A1E;
+  --celia-nopal: #2F6B3A;
+  --celia-maiz: #E9A83B;
+  --celia-muted: #7A6254;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: #C62A1E;
+  color: #ffffff;
+}
+
+h1,
+h2,
+h3 {
+  font-variation-settings: "SOFT" 50, "WONK" 0;
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+html.scrollbar-none,
+body.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+html.scrollbar-none::-webkit-scrollbar,
+body.scrollbar-none::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  html.scrollbar-none,
+  body.scrollbar-none {
+    -ms-overflow-style: auto;
+    scrollbar-width: auto;
+  }
+
+  html.scrollbar-none::-webkit-scrollbar,
+  body.scrollbar-none::-webkit-scrollbar {
+    width: initial;
+    height: initial;
+    display: initial;
+  }
+}

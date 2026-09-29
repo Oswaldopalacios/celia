@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProductType {
+  comida
+  bebidas
+}
+
+enum UserType {
+  admin
+  operator
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  phone     String   @default("")
+  userType  UserType @default(admin)
+  createdAt DateTime @default(now())
+
+  @@map("users")
+}
+
+model Category {
+  id        String      @id @default(cuid())
+  title     String
+  kind      ProductType @default(comida)
+  icon      String      @default("")
+  products  Product[]
+  createdAt DateTime    @default(now())
+
+  @@unique([title, kind])
+  @@map("categories")
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  description String      @default("")
+  price       Float
+  quantity    String      @default("1")
+  productType ProductType @default(comida)
+  isSoldOut   Boolean     @default(false)
+  isFeatured  Boolean     @default(false)
+  image       String      @default("")
+  categoryId  String
+  category    Category    @relation(fields: [categoryId], references: [id])
+  portions    ProductPortion[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([categoryId])
+  @@index([productType])
+  @@index([isFeatured])
+  @@map("products")
+}
+
+/// Named sizes of a product ("Orden", "1/2 orden", "Pieza"). When a product
+/// has portions, Product.price mirrors the cheapest one.
+model ProductPortion {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  price     Float
+  sortOrder Int     @default(0)
+
+  @@index([productId])
+  @@map("product_portions")
+}
+
+model GalleryCategory {
+  id        String         @id @default(cuid())
+  title     String         @unique
+  images    GalleryImage[]
+  createdAt DateTime       @default(now())
+
+  @@map("gallery_categories")
+}
+
+model GalleryImage {
+  id          String          @id @default(cuid())
+  title       String
+  description String          @default("")
+  location    String          @default("Restaurante Doña Celia")
+  image       String
+  isFeatured  Boolean         @default(false)
+  categoryId  String
+  category    GalleryCategory @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([categoryId])
+  @@index([isFeatured])
+  @@map("gallery_images")
+}
+
+model ContactSettings {
+  id          String   @id @default("default")
+  phone       String   @default("")
+  whatsapp    String   @default("")
+  email       String?
+  name        String   @default("")
+  place       String   @default("")
+  address     String   @default("")
+  mapsQuery   String   @default("")
+  description String?
+  hours       Json?
+  references  Json?
+  updatedAt   DateTime @updatedAt
+
+  @@map("contact_settings")
+}
