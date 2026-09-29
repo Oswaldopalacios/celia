@@ -1,7 +1,10 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
+let ensured = false;
+
 export async function ensureAdmin() {
+  if (ensured) return;
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
   const name = process.env.ADMIN_NAME?.trim() || "Administrador";
@@ -12,16 +15,17 @@ export async function ensureAdmin() {
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) return;
-
-  const hashed = await bcrypt.hash(password, 10);
-  await prisma.user.create({
-    data: {
-      name,
-      email,
-      password: hashed,
-      phone,
-      userType: "admin",
-    },
-  });
+  if (!existing) {
+    const hashed = await bcrypt.hash(password, 10);
+    await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashed,
+        phone,
+        userType: "admin",
+      },
+    });
+  }
+  ensured = true;
 }
