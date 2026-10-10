@@ -8,7 +8,14 @@ import {
 } from "@phosphor-icons/react";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { useEffect, useEffectEvent, useMemo, useState } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { CategoryGlyph } from "@/components/public/category-glyph";
 import { PublicMenuButton } from "@/components/public/menu-button";
 import { AddToOrderButton } from "@/components/public/order/order-stepper";
@@ -169,10 +176,8 @@ export function MenuHome() {
         initial="hidden"
         animate="visible"
       >
-        <div
-          className="flex gap-4 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] lg:flex-wrap lg:justify-center lg:gap-x-10 lg:gap-y-3 lg:overflow-visible [&::-webkit-scrollbar]:hidden"
-          role="tablist"
-          aria-label="Categorías"
+        <CategoryScroller
+          watch={`${foodCategories.map((category) => category._id).join(",")}|${drinkCategories.length}`}
         >
           <motion.div variants={fadeUp}>
             <FilterChip
@@ -182,16 +187,6 @@ export function MenuHome() {
               onClick={() => selectFilter("all")}
             />
           </motion.div>
-          {foodCategories.map((category) => (
-            <motion.div key={category._id} variants={fadeUp}>
-              <FilterChip
-                label={category.title}
-                icon={resolveCategoryIcon(category)}
-                active={filter === category._id}
-                onClick={() => selectFilter(category._id)}
-              />
-            </motion.div>
-          ))}
           {drinkCategories.length > 0 && (
             <motion.div variants={fadeUp}>
               <FilterChip
@@ -202,7 +197,17 @@ export function MenuHome() {
               />
             </motion.div>
           )}
-        </div>
+          {foodCategories.map((category) => (
+            <motion.div key={category._id} variants={fadeUp}>
+              <FilterChip
+                label={category.title}
+                icon={resolveCategoryIcon(category)}
+                active={filter === category._id}
+                onClick={() => selectFilter(category._id)}
+              />
+            </motion.div>
+          ))}
+        </CategoryScroller>
 
         <AnimatePresence initial={false}>
           {filter === DRINKS_FILTER && drinkCategories.length > 1 && (
@@ -444,6 +449,119 @@ function FeaturedCarousel({ products }: { products: Product[] }) {
   );
 }
 
+function CategoryScroller({
+  children,
+  watch,
+}: {
+  children: ReactNode;
+  watch: string;
+}) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+
+    const update = () => {
+      const max = el.scrollWidth - el.clientWidth;
+      const next = {
+        left: el.scrollLeft > 8,
+        right: max > 8 && el.scrollLeft < max - 8,
+      };
+      setEdges((current) =>
+        current.left === next.left && current.right === next.right
+          ? current
+          : next,
+      );
+    };
+
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    for (const child of el.children) observer.observe(child);
+    window.addEventListener("resize", update);
+
+    return () => {
+      el.removeEventListener("scroll", update);
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [watch]);
+
+  const scrollByDir = (direction: -1 | 1) => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const amount = Math.max(148, Math.round(el.clientWidth * 0.72));
+    el.scrollBy({ left: direction * amount, behavior: "smooth" });
+  };
+
+  return (
+    <div className="relative">
+      <div
+        aria-hidden
+        className={`pointer-events-none absolute inset-y-0 left-0 z-[1] w-8 bg-gradient-to-r from-[#FAF3E6] to-transparent transition-opacity lg:hidden ${
+          edges.left ? "opacity-100" : "opacity-0"
+        }`}
+      />
+      <div
+        aria-hidden
+        className={`pointer-events-none absolute inset-y-0 right-0 z-[1] w-10 bg-gradient-to-l from-[#FAF3E6] to-transparent transition-opacity lg:hidden ${
+          edges.right ? "opacity-100" : "opacity-0"
+        }`}
+      />
+      <CategoryScrollButton
+        direction="left"
+        visible={edges.left}
+        onClick={() => scrollByDir(-1)}
+      />
+      <CategoryScrollButton
+        direction="right"
+        visible={edges.right}
+        onClick={() => scrollByDir(1)}
+      />
+      <div
+        ref={scrollerRef}
+        className="flex gap-4 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] lg:flex-wrap lg:justify-center lg:gap-x-10 lg:gap-y-3 lg:overflow-visible [&::-webkit-scrollbar]:hidden"
+        role="tablist"
+        aria-label="Categorías"
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function CategoryScrollButton({
+  direction,
+  visible,
+  onClick,
+}: {
+  direction: "left" | "right";
+  visible: boolean;
+  onClick: () => void;
+}) {
+  const Icon = direction === "left" ? CaretLeft : CaretRight;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      tabIndex={visible ? 0 : -1}
+      aria-hidden={!visible}
+      aria-label={
+        direction === "left" ? "Ver categorías anteriores" : "Ver más categorías"
+      }
+      className={`absolute top-0 z-10 grid size-7 place-items-center rounded-full bg-white text-[#3A2218] shadow-[0_6px_16px_rgba(58,34,24,0.16)] ring-1 ring-[#3A2218]/8 transition lg:hidden ${
+        direction === "left" ? "left-0" : "right-0"
+      } ${visible ? "opacity-100" : "pointer-events-none opacity-0"}`}
+    >
+      <Icon size={14} weight="bold" />
+    </button>
+  );
+}
+
 function FilterChip({
   label,
   icon,
@@ -605,7 +723,7 @@ function HeaderPhoto() {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src="/landing/Headerv2.png"
+      src="/landing/HeaderV3.webp"
       alt="Fachada del restaurante Doña Celia"
       onError={() => setFailed(true)}
       className="absolute inset-0 size-full object-cover object-center lg:object-[center_28%]"

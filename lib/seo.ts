@@ -46,7 +46,7 @@ export function restaurantJsonLd(contact: ContactSettings) {
     slogan: SITE_TAGLINE,
     description: contact.description || SITE_DESCRIPTION,
     url: SITE_URL,
-    image: [absoluteUrl(DEFAULT_OG_IMAGE.url), absoluteUrl("/landing/Headerv2.png")],
+    image: [absoluteUrl(DEFAULT_OG_IMAGE.url), absoluteUrl("/landing/HeaderV3.webp")],
     logo: absoluteUrl("/logoV2.png"),
     foundingDate: "1989",
     servesCuisine: ["Mexicana", "Comida típica mexicana", "Cocina casera"],

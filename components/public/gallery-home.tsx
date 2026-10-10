@@ -103,7 +103,7 @@ export function GalleryHome() {
         <div className="absolute inset-0 bg-[#EAD7BD]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/landing/Headerv2.png"
+            src="/landing/HeaderV3.webp"
             alt=""
             className="size-full object-cover object-center opacity-70"
           />

@@ -111,7 +111,7 @@ export function UbicacionHome() {
         <div className="absolute inset-0 bg-[#EAD7BD]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/landing/Headerv2.png"
+            src="/landing/HeaderV3.webp"
             alt=""
             className="size-full object-cover object-center opacity-70"
           />
@@ -297,7 +297,7 @@ export function UbicacionHome() {
           <div className="relative aspect-[16/10]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/landing/Headerv2.png"
+              src="/landing/HeaderV3.webp"
               alt={`Fachada de ${location.name}`}
               className="absolute inset-0 size-full object-cover object-[center_40%]"
             />
@@ -360,7 +360,7 @@ export function ComoLlegarHome() {
         <div className="absolute inset-0 bg-[#EAD7BD]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/landing/Headerv2.png"
+            src="/landing/HeaderV3.webp"
             alt=""
             className="size-full object-cover object-center opacity-70"
           />
