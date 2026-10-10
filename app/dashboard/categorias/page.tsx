@@ -1,7 +1,14 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Boxes, FolderPlus, PencilLine, Trash2 } from "lucide-react";
+import {
+  Boxes,
+  ChevronDown,
+  ChevronUp,
+  FolderPlus,
+  PencilLine,
+  Trash2,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { CategoryFormModal } from "@/components/categories/category-form-modal";
 import { DeleteCategoryModal } from "@/components/categories/delete-category-modal";
@@ -16,29 +23,50 @@ import {
   dashboardTabInactive,
   dashboardTabTrack,
 } from "@/lib/dashboard-theme";
-import { useCategories } from "@/hooks/use-products";
+import { useCategories, useReorderCategories } from "@/hooks/use-products";
+import { getApiErrorMessage } from "@/lib/api";
 import type { ProductCategory, ProductType } from "@/lib/types";
 
 type KindFilter = "all" | ProductType;
 
 export default function CategoriasPage() {
   const { data: categories = [], isLoading, isError } = useCategories();
+  const reorder = useReorderCategories();
   const [filter, setFilter] = useState<KindFilter>("all");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<ProductCategory | null>(null);
   const [deleting, setDeleting] = useState<ProductCategory | null>(null);
+  const [orderError, setOrderError] = useState("");
 
   const filtered = useMemo(() => {
-    const list =
-      filter === "all"
-        ? categories
-        : categories.filter((c) =>
-            filter === "bebidas"
-              ? c.kind === "bebidas"
-              : c.kind !== "bebidas",
-          );
-    return [...list].sort((a, b) => a.title.localeCompare(b.title, "es"));
+    if (filter === "all") return categories;
+    return categories.filter((category) =>
+      filter === "bebidas"
+        ? category.kind === "bebidas"
+        : category.kind !== "bebidas",
+    );
   }, [categories, filter]);
+
+  const moveCategory = (category: ProductCategory, direction: -1 | 1) => {
+    const index = filtered.findIndex((item) => item._id === category._id);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= filtered.length) return;
+
+    const nextFiltered = [...filtered];
+    const [moved] = nextFiltered.splice(index, 1);
+    nextFiltered.splice(target, 0, moved);
+
+    const queue = [...nextFiltered];
+    const visible = new Set(filtered.map((item) => item._id));
+    const ids = categories.map((item) =>
+      visible.has(item._id) ? queue.shift()!._id : item._id,
+    );
+
+    setOrderError("");
+    reorder.mutate(ids, {
+      onError: (error) => setOrderError(getApiErrorMessage(error)),
+    });
+  };
 
   const counts = useMemo(
     () => ({
@@ -69,8 +97,9 @@ export default function CategoriasPage() {
             </p>
             <h1 className={`${dashboardPageTitle} mt-1`}>Categorías</h1>
             <p className={`${dashboardPageSubtitle} max-w-lg leading-6`}>
-              Organiza comida y bebidas. Si eliminas una categoría con
-              productos, deberás moverlos a otra.
+              El orden de esta lista es el del menú público. Todos queda
+              siempre al inicio. Las bebidas se muestran juntas, en el lugar
+              de la primera categoría de bebidas.
             </p>
           </div>
           <button
@@ -130,6 +159,12 @@ export default function CategoriasPage() {
         {isError && (
           <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
             No se pudieron cargar las categorías.
+          </p>
+        )}
+
+        {orderError && (
+          <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+            {orderError}
           </p>
         )}
 
@@ -203,7 +238,27 @@ export default function CategoriasPage() {
                       </p>
                     </div>
 
-                    <div className="flex shrink-0 gap-1.5">
+                    <div className="flex shrink-0 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => moveCategory(category, -1)}
+                        disabled={index === 0 || reorder.isPending}
+                        className="grid size-10 place-items-center rounded-xl text-[#3A2218] transition hover:bg-[#FAF3E6] disabled:pointer-events-none disabled:opacity-30"
+                        aria-label={`Subir ${category.title}`}
+                      >
+                        <ChevronUp className="size-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveCategory(category, 1)}
+                        disabled={
+                          index === filtered.length - 1 || reorder.isPending
+                        }
+                        className="grid size-10 place-items-center rounded-xl text-[#3A2218] transition hover:bg-[#FAF3E6] disabled:pointer-events-none disabled:opacity-30"
+                        aria-label={`Bajar ${category.title}`}
+                      >
+                        <ChevronDown className="size-4" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => openEdit(category)}

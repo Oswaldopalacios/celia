@@ -7,12 +7,37 @@ import {
 import { prisma } from "@/lib/prisma";
 import type { ProductType } from "@/lib/types";
 
+/** First visit: drinks, then food, so Bebidas stays right after Todos. */
+async function ensureCategoryOrder() {
+  const rows = await prisma.category.findMany({
+    select: { id: true, title: true, kind: true, sortOrder: true },
+  });
+  if (rows.length < 2 || rows.some((row) => row.sortOrder !== 0)) return;
+
+  const byTitle = (a: { title: string }, b: { title: string }) =>
+    a.title.localeCompare(b.title, "es");
+  const ordered = [
+    ...rows.filter((row) => row.kind === "bebidas").sort(byTitle),
+    ...rows.filter((row) => row.kind !== "bebidas").sort(byTitle),
+  ];
+
+  await prisma.$transaction(
+    ordered.map((row, index) =>
+      prisma.category.update({
+        where: { id: row.id },
+        data: { sortOrder: index },
+      }),
+    ),
+  );
+}
+
 export async function listCategories(kind?: ProductType) {
   await ensureDefaults();
+  await ensureCategoryOrder();
   const rows = await prisma.category.findMany({
     where: kind ? { kind } : undefined,
     include: { _count: { select: { products: true } } },
-    orderBy: { title: "asc" },
+    orderBy: [{ sortOrder: "asc" }, { title: "asc" }],
   });
   return rows.map(serializeCategory);
 }
@@ -43,6 +68,11 @@ export async function createCategory(
 ) {
   await ensureDefaults();
   const nextIcon = normalizeIcon(icon);
+  await ensureCategoryOrder();
+  const last = await prisma.category.findFirst({
+    orderBy: { sortOrder: "desc" },
+    select: { sortOrder: true },
+  });
   const duplicate = await prisma.category.findFirst({
     where: { title, kind },
   });
@@ -54,7 +84,12 @@ export async function createCategory(
   }
 
   const row = await prisma.category.create({
-    data: { title, kind, icon: nextIcon },
+    data: {
+      title,
+      kind,
+      icon: nextIcon,
+      sortOrder: (last?.sortOrder ?? -1) + 1,
+    },
     include: { _count: { select: { products: true } } },
   });
   return serializeCategory(row);
@@ -102,6 +137,34 @@ export async function updateCategory(
     include: { _count: { select: { products: true } } },
   });
   return serializeCategory(row);
+}
+
+export async function reorderCategories(ids: string[]) {
+  await ensureDefaults();
+  const rows = await prisma.category.findMany({ select: { id: true } });
+  const known = new Set(rows.map((row) => row.id));
+
+  if (
+    ids.length !== rows.length ||
+    new Set(ids).size !== ids.length ||
+    ids.some((id) => !known.has(id))
+  ) {
+    throw Object.assign(
+      new Error("El orden debe incluir cada categoría una sola vez."),
+      { status: 400 },
+    );
+  }
+
+  await prisma.$transaction(
+    ids.map((id, index) =>
+      prisma.category.update({
+        where: { id },
+        data: { sortOrder: index },
+      }),
+    ),
+  );
+
+  return listCategories();
 }
 
 export async function deleteCategory(id: string, reassignTo?: string) {

@@ -19,6 +19,7 @@ export type ProductCategory = {
   kind?: ProductType;
   icon?: string;
   productCount?: number;
+  sortOrder?: number;
 };
 
 export type ProductPortion = {

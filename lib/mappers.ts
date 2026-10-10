@@ -11,6 +11,7 @@ type CategoryRecord = {
   title: string;
   kind: ProductType;
   icon: string;
+  sortOrder?: number;
   _count?: { products: number };
 };
 
@@ -67,6 +68,7 @@ export function serializeCategory(row: CategoryRecord): ProductCategory {
     kind: row.kind === "bebidas" ? "bebidas" : "comida",
     icon: row.icon || undefined,
     productCount: row._count?.products ?? 0,
+    sortOrder: row.sortOrder ?? 0,
   };
 }
 

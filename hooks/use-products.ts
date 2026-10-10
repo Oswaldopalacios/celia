@@ -157,6 +157,44 @@ export function useUpdateCategory() {
   });
 }
 
+export function useReorderCategories() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { data } = await api.put<{
+        message: string;
+        categories: ProductCategory[];
+      }>("/api/categories/reorder", { ids });
+      return data.categories;
+    },
+    onMutate: async (ids) => {
+      await queryClient.cancelQueries({ queryKey: productKeys.categories });
+      const previous = queryClient.getQueryData<ProductCategory[]>(
+        productKeys.categories,
+      );
+      if (previous) {
+        const byId = new Map(previous.map((category) => [category._id, category]));
+        const next = ids
+          .map((id) => byId.get(id))
+          .filter((category): category is ProductCategory => Boolean(category));
+        if (next.length === previous.length) {
+          queryClient.setQueryData(productKeys.categories, next);
+        }
+      }
+      return { previous };
+    },
+    onError: (_error, _ids, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(productKeys.categories, context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: productKeys.categories });
+    },
+  });
+}
+
 export function useDeleteCategory() {
   const queryClient = useQueryClient();
 

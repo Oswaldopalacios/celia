@@ -41,6 +41,102 @@ type MenuGroupData = {
   products: Product[];
 };
 
+type MenuBlock =
+  | { type: "group"; group: MenuGroupData }
+  | { type: "drinks"; groups: MenuGroupData[] };
+
+type CategoryChip =
+  | { type: "drinks"; key: "drinks" }
+  | { type: "food"; key: string; category: ProductCategory };
+
+function groupMenuProducts(products: Product[]) {
+  const groups = new Map<string, MenuGroupData>();
+
+  for (const product of products) {
+    const id = product.category?._id ?? "__none__";
+    const existing = groups.get(id);
+    if (existing) {
+      existing.products.push(product);
+    } else {
+      groups.set(id, {
+        category: product.category ?? null,
+        title: product.category?.title ?? "Sin categoría",
+        products: [product],
+      });
+    }
+  }
+
+  return [...groups.values()];
+}
+
+function buildCategoryChips(categories: ProductCategory[]): CategoryChip[] {
+  const chips: CategoryChip[] = [];
+  let drinksPlaced = false;
+
+  for (const category of categories) {
+    if (category.kind === "bebidas") {
+      if (!drinksPlaced) {
+        chips.push({ type: "drinks", key: "drinks" });
+        drinksPlaced = true;
+      }
+      continue;
+    }
+    chips.push({ type: "food", key: category._id, category });
+  }
+
+  return chips;
+}
+
+function buildMenuBlocks(
+  groups: MenuGroupData[],
+  categories: ProductCategory[],
+): MenuBlock[] {
+  const order = new Map(categories.map((category, index) => [category._id, index]));
+  const sorted = [...groups].sort((a, b) => {
+    if (!a.category) return 1;
+    if (!b.category) return -1;
+    return (
+      (order.get(a.category._id) ?? 99) - (order.get(b.category._id) ?? 99)
+    );
+  });
+  const drinks = sorted.filter((group) => group.category?.kind === "bebidas");
+  const foodById = new Map(
+    sorted
+      .filter((group) => group.category && group.category.kind !== "bebidas")
+      .map((group) => [group.category!._id, group]),
+  );
+  const blocks: MenuBlock[] = [];
+  const used = new Set<string>();
+  let drinksPlaced = false;
+
+  const placeDrinks = () => {
+    if (drinksPlaced || drinks.length === 0) return;
+    blocks.push({ type: "drinks", groups: drinks });
+    drinksPlaced = true;
+  };
+
+  for (const category of categories) {
+    if (category.kind === "bebidas") {
+      placeDrinks();
+      continue;
+    }
+    const group = foodById.get(category._id);
+    if (!group) continue;
+    blocks.push({ type: "group", group });
+    used.add(category._id);
+  }
+
+  for (const group of sorted) {
+    if (group.category?.kind === "bebidas") continue;
+    const id = group.category?._id;
+    if (id && used.has(id)) continue;
+    blocks.push({ type: "group", group });
+  }
+
+  placeDrinks();
+  return blocks;
+}
+
 const DRINKS_FILTER = "__bebidas__";
 const FEATURED_AUTOPLAY_MS = 4500;
 
@@ -59,7 +155,6 @@ export function MenuHome() {
   const categories = categoriesQuery.data ?? [];
   const loading = productsQuery.isLoading || categoriesQuery.isLoading;
 
-  const foodCategories = categories.filter((c) => c.kind !== "bebidas");
   const drinkCategories = categories.filter((c) => c.kind === "bebidas");
 
   const selectFilter = (
@@ -93,43 +188,18 @@ export function MenuHome() {
     return products.filter((product) => product.isFeatured);
   }, [products, search, filter]);
 
-  const grouped = useMemo(() => {
-    const order = new Map(categories.map((c, i) => [c._id, i]));
-    const groups = new Map<string, MenuGroupData>();
+  const menuBlocks = useMemo(
+    () => buildMenuBlocks(groupMenuProducts(visibleProducts), categories),
+    [visibleProducts, categories],
+  );
 
-    for (const product of visibleProducts) {
-      const id = product.category?._id ?? "__none__";
-      const existing = groups.get(id);
-      if (existing) {
-        existing.products.push(product);
-      } else {
-        groups.set(id, {
-          category: product.category ?? null,
-          title: product.category?.title ?? "Sin categoría",
-          products: [product],
-        });
-      }
-    }
-
-    const sorted = [...groups.values()].sort((a, b) => {
-      if (!a.category) return 1;
-      if (!b.category) return -1;
-      return (
-        (order.get(a.category._id) ?? 99) - (order.get(b.category._id) ?? 99)
-      );
-    });
-
-    return {
-      food: sorted.filter((group) => group.category?.kind !== "bebidas"),
-      drinks: sorted.filter((group) => group.category?.kind === "bebidas"),
-    };
-  }, [visibleProducts, categories]);
+  const categoryChips = useMemo(() => buildCategoryChips(categories), [categories]);
 
   const showPreview = filter === "all" && !search.trim();
-  const drinksCount = grouped.drinks.reduce(
-    (total, group) => total + group.products.length,
-    0,
-  );
+  const drinksCount =
+    menuBlocks
+      .find((block) => block.type === "drinks")
+      ?.groups.reduce((total, group) => total + group.products.length, 0) ?? 0;
 
   return (
     <PublicFrame>
@@ -177,7 +247,7 @@ export function MenuHome() {
         animate="visible"
       >
         <CategoryScroller
-          watch={`${foodCategories.map((category) => category._id).join(",")}|${drinkCategories.length}`}
+          watch={categoryChips.map((chip) => chip.key).join(",")}
         >
           <motion.div variants={fadeUp}>
             <FilterChip
@@ -187,26 +257,27 @@ export function MenuHome() {
               onClick={() => selectFilter("all")}
             />
           </motion.div>
-          {drinkCategories.length > 0 && (
-            <motion.div variants={fadeUp}>
-              <FilterChip
-                label="Bebidas"
-                icon="pint-glass"
-                active={filter === DRINKS_FILTER}
-                onClick={() => selectFilter(DRINKS_FILTER)}
-              />
-            </motion.div>
+          {categoryChips.map((chip) =>
+            chip.type === "drinks" ? (
+              <motion.div key="drinks" variants={fadeUp}>
+                <FilterChip
+                  label="Bebidas"
+                  icon="pint-glass"
+                  active={filter === DRINKS_FILTER}
+                  onClick={() => selectFilter(DRINKS_FILTER)}
+                />
+              </motion.div>
+            ) : (
+              <motion.div key={chip.category._id} variants={fadeUp}>
+                <FilterChip
+                  label={chip.category.title}
+                  icon={resolveCategoryIcon(chip.category)}
+                  active={filter === chip.category._id}
+                  onClick={() => selectFilter(chip.category._id)}
+                />
+              </motion.div>
+            ),
           )}
-          {foodCategories.map((category) => (
-            <motion.div key={category._id} variants={fadeUp}>
-              <FilterChip
-                label={category.title}
-                icon={resolveCategoryIcon(category)}
-                active={filter === category._id}
-                onClick={() => selectFilter(category._id)}
-              />
-            </motion.div>
-          ))}
         </CategoryScroller>
 
         <AnimatePresence initial={false}>
@@ -281,59 +352,62 @@ export function MenuHome() {
           >
             <SectionHeading title="Nuestro menú" />
             <div className="mt-4 space-y-6">
-              {grouped.food.map((group) => (
-                <MenuGroup
-                  key={group.category?._id ?? group.title}
-                  group={group}
-                  preview={showPreview}
-                  onSeeAll={
-                    group.category
-                      ? () => selectFilter(group.category!._id)
-                      : undefined
-                  }
-                />
-              ))}
-
-              {grouped.drinks.length > 0 && (
-                <motion.div variants={fadeUp}>
-                  <div className="mb-3 flex items-center justify-between gap-3 border-b border-[#3A2218]/8 pb-2.5">
-                    <div className="flex items-center gap-2 text-[#3A2218]">
-                      <CategoryGlyph icon="pint-glass" className="size-5" />
-                      <h3 className="font-[family-name:var(--font-display)] text-[15px] font-bold uppercase tracking-[0.08em] lg:text-[16px]">
-                        Bebidas
-                      </h3>
-                      <span className="rounded-full bg-[#3A2218]/8 px-2 py-0.5 text-[10px] font-bold text-[#3A2218]">
-                        {drinksCount}
-                      </span>
+              {menuBlocks.map((block) =>
+                block.type === "group" ? (
+                  <MenuGroup
+                    key={block.group.category?._id ?? block.group.title}
+                    group={block.group}
+                    preview={showPreview}
+                    onSeeAll={
+                      block.group.category
+                        ? () => selectFilter(block.group.category!._id)
+                        : undefined
+                    }
+                  />
+                ) : (
+                  <motion.div key="bebidas" variants={fadeUp}>
+                    <div className="mb-3 flex items-center justify-between gap-3 border-b border-[#3A2218]/8 pb-2.5">
+                      <div className="flex items-center gap-2 text-[#3A2218]">
+                        <CategoryGlyph icon="pint-glass" className="size-5" />
+                        <h3 className="font-[family-name:var(--font-display)] text-[15px] font-bold uppercase tracking-[0.08em] lg:text-[16px]">
+                          Bebidas
+                        </h3>
+                        <span className="rounded-full bg-[#3A2218]/8 px-2 py-0.5 text-[10px] font-bold text-[#3A2218]">
+                          {drinksCount}
+                        </span>
+                      </div>
+                      {showPreview && (
+                        <button
+                          type="button"
+                          onClick={() => selectFilter(DRINKS_FILTER)}
+                          className="inline-flex items-center gap-0.5 text-[12px] font-semibold text-[#C62A1E]"
+                        >
+                          Ver todas
+                          <CaretRight size={12} weight="bold" />
+                        </button>
+                      )}
                     </div>
-                    {showPreview && (
-                      <button
-                        type="button"
-                        onClick={() => selectFilter(DRINKS_FILTER)}
-                        className="inline-flex items-center gap-0.5 text-[12px] font-semibold text-[#C62A1E]"
-                      >
-                        Ver todas
-                        <CaretRight size={12} weight="bold" />
-                      </button>
-                    )}
-                  </div>
-                  <div className="space-y-5">
-                    {grouped.drinks.map((group) => (
-                      <MenuGroup
-                        key={group.category?._id ?? group.title}
-                        group={group}
-                        nested
-                        preview={showPreview}
-                        onSeeAll={
-                          group.category
-                            ? () =>
-                                selectFilter(DRINKS_FILTER, group.category!._id)
-                            : undefined
-                        }
-                      />
-                    ))}
-                  </div>
-                </motion.div>
+                    <div className="space-y-5">
+                      {block.groups.map((group) => (
+                        <MenuGroup
+                          key={group.category?._id ?? group.title}
+                          group={group}
+                          nested
+                          preview={showPreview}
+                          onSeeAll={
+                            group.category
+                              ? () =>
+                                  selectFilter(
+                                    DRINKS_FILTER,
+                                    group.category!._id,
+                                  )
+                              : undefined
+                          }
+                        />
+                      ))}
+                    </div>
+                  </motion.div>
+                ),
               )}
             </div>
           </motion.section>

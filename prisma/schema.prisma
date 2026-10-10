@@ -33,10 +33,12 @@ model Category {
   title     String
   kind      ProductType @default(comida)
   icon      String      @default("")
+  sortOrder Int         @default(0)
   products  Product[]
   createdAt DateTime    @default(now())
 
   @@unique([title, kind])
+  @@index([sortOrder])
   @@map("categories")
 }
 
